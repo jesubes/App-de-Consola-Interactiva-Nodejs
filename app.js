@@ -1,32 +1,78 @@
-
 require("colors");
 
-const { inquirerMenu, pausa } = require("./helpers/inquirer.js");
-const Tarea = require("./models/tarea.js");
+const { guardarDB, leerDB } = require("./helpers/guardarArchivo.js");
+const {
+  inquirerMenu,
+  pausa,
+  leerInput,
+  listadoTareasBorrar,
+  confirmar,
+  mostarListadoChecklist
+} = require("./helpers/inquirer.js");
+
 const Tareas = require("./models/tareas.js");
 
-console.clear()
+console.clear();
 
 const main = async () => {
+  let opt = "";
+  const tareas = new Tareas();
 
-  let opt = ''
+  const tareasDB = leerDB();
 
-  do{
-    // opt = await inquirerMenu()
-    // console.log({opt })
-    const tareas = new Tareas()
-    const tarea = new Tarea('comprar comida')
+  if (tareasDB) {
+    //Establecer las tareas
+    tareas.cargarTareasFromArray(tareasDB);
+  }
 
-    tareas._listado[tarea.id] = tarea
+  do {
+    //imprimir el menu
+    opt = await inquirerMenu();
 
-    console.log(tareas)
+    switch (opt) {
+      case "1":
+        //crear opcion
+        const desc = await leerInput("Descripción:");
+        tareas.crearTarea(desc);
+        break;
 
+      case "2": // listar todas las tareas
+        tareas.listadoCompleto();
+        break;
 
-    await pausa()
+        case "3": // listar completadas
+        tareas.listarPendientesCompletadas(true);
+        break;
+        
+      case "4": // listar pendientes
+      tareas.listarPendientesCompletadas(false);
+      break;
 
-  }while( opt !== '0')
+      case '5': // completado | pendiente
+        const ids = await mostarListadoChecklist( tareas.listadoArr )
+        tareas.toggleCompletadas( ids )
 
+        break
 
+      case "6": // borrar
+        const id = await listadoTareasBorrar(tareas.listadoArr);
+        if (id !== '0') {
+                // Preguntar si esta seguro
+          const ok = await confirmar("Esta seguro?");
+
+          if (ok) {
+            tareas.borrarTarea(id);
+            console.log("\nTarea Borrada Correctamente");
+          }
+        }
+
+        break;
+    }
+
+    guardarDB(tareas.listadoArr);
+
+    await pausa();
+  } while (opt !== "0");
 };
 
 main();
